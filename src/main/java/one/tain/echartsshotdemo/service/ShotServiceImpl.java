@@ -1,12 +1,10 @@
 package one.tain.echartsshotdemo.service;
 
+import lombok.AllArgsConstructor;
 import one.tain.echartsshotdemo.cache.OptionsCache;
+import one.tain.echartsshotdemo.pool.SeleniumPool;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeDriverService;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.stereotype.Service;
 
@@ -19,18 +17,11 @@ import java.io.InputStream;
 import java.util.UUID;
 
 @Service
+@AllArgsConstructor
 public class ShotServiceImpl implements ShotService {
     private final ServletWebServerApplicationContext servletWebServerApplicationContext;
     private final OptionsCache optionsCache;
-    private final String driverPath;
-
-    public ShotServiceImpl(ServletWebServerApplicationContext servletWebServerApplicationContext,
-                           OptionsCache optionsCache,
-                           @Value("${chrome.driver.path}") String driverPath) {
-        this.servletWebServerApplicationContext = servletWebServerApplicationContext;
-        this.optionsCache = optionsCache;
-        this.driverPath = driverPath;
-    }
+    private final SeleniumPool seleniumPool;
 
     @Override
     public String base64(String url, String params) throws IOException {
@@ -38,18 +29,7 @@ public class ShotServiceImpl implements ShotService {
         String optionsId = UUID.randomUUID().toString();
         optionsCache.put(optionsId, params);
 
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        options.addArguments("--remote-allow-origins=*");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--window-size=1200,800");
-        options.addArguments("--hide-scrollbars");
-        ChromeDriverService service = new ChromeDriverService.Builder()
-                .usingDriverExecutable(new java.io.File(driverPath))
-                .usingAnyFreePort()
-                .build();
-        WebDriver driver = new ChromeDriver(service, options);
+        WebDriver driver = seleniumPool.get();
         driver.get("http://127.0.0.1:" + servletWebServerApplicationContext.getWebServer().getPort() + url + "?optionsId=" + optionsId);
 
         WebElement mainCharts = driver.findElement(By.id("mainCharts"));

@@ -13,7 +13,7 @@ import java.io.IOException;
 public class ShotController {
     private ShotService shotService;
 
-    @PostMapping(value = "base64", consumes = "text/plain", produces = "application/json;charset=UTF-8")
+    @PostMapping(value = "base64", consumes = "text/plain", produces = "text/plain")
     public ResponseEntity<String> base64(@RequestParam(value = "path", required = false) String url, @RequestBody String params) throws IOException {
         if (url == null) {
             url = "/";
