@@ -19,7 +19,7 @@ public class IndexController {
     private final OptionsCache optionsCache;
     @GetMapping("/")
     public String index(@RequestParam("optionsId")String optionsId, Model model) throws ExecutionException {
-        model.addAttribute("option",optionsCache.get(optionsId));
+        model.addAttribute("options",optionsCache.get(optionsId));
         return "index.html";
     }
 }

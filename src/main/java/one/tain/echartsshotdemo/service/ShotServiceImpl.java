@@ -1,8 +1,10 @@
 package one.tain.echartsshotdemo.service;
 
 import one.tain.echartsshotdemo.cache.OptionsCache;
-import org.apache.tomcat.util.codec.binary.Base64;
-import org.openqa.selenium.*;
+import org.openqa.selenium.By;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -10,12 +12,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 import org.springframework.stereotype.Service;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,51 +24,57 @@ public class ShotServiceImpl implements ShotService {
     private final OptionsCache optionsCache;
     private final String driverPath;
 
-    public ShotServiceImpl(ServletWebServerApplicationContext servletWebServerApplicationContext,
-                           OptionsCache optionsCache,
-                           @Value("${chrome.driver.path}") String driverPath) {
+    public ShotServiceImpl(ServletWebServerApplicationContext servletWebServerApplicationContext, OptionsCache optionsCache, @Value("${chrome.driver.path}") String driverPath) {
         this.servletWebServerApplicationContext = servletWebServerApplicationContext;
         this.optionsCache = optionsCache;
         this.driverPath = driverPath;
     }
 
     @Override
-    public String base64(String url, String params) throws IOException {
+    public List<String> base64(String url, Collection<String> params) throws IOException {
+        final List<String> result = new ArrayList<>();
 
-        String optionsId = UUID.randomUUID().toString();
+        final String optionsId = UUID.randomUUID().toString();
         optionsCache.put(optionsId, params);
 
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");
-        options.addArguments("--remote-allow-origins=*");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--window-size=1200,800");
-        options.addArguments("--hide-scrollbars");
-        ChromeDriverService service = new ChromeDriverService.Builder()
-                .usingDriverExecutable(new java.io.File(driverPath))
-                .usingAnyFreePort()
-                .build();
-        WebDriver driver = new ChromeDriver(service, options);
-        driver.get("http://127.0.0.1:" + servletWebServerApplicationContext.getWebServer().getPort() + url + "?optionsId=" + optionsId);
+        try (CloseAbleDriver closeAbleDriver = new CloseAbleDriver(1100, params.size() * 600 + 200)) {
+            WebDriver driver = closeAbleDriver.driver;
+            driver.get("http://127.0.0.1:" + servletWebServerApplicationContext.getWebServer().getPort() + url + "?optionsId=" + optionsId);
 
-        WebElement mainCharts = driver.findElement(By.id("mainCharts"));
-        int x = mainCharts.getLocation().x;
-        int y = mainCharts.getLocation().y;
-        int height = mainCharts.getSize().height;
-        int width = mainCharts.getSize().width;
+            for (int i = 0; i < params.size(); i++) {
+                WebElement webElement = driver.findElement(By.id("charts" + i));
+                String screenshotAs1 = webElement.getScreenshotAs(OutputType.BASE64);
+                result.add(screenshotAs1);
 
+            }
+            return result;
 
-        byte[] screenshotAs = ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
-        InputStream inputStream = new ByteArrayInputStream(screenshotAs);
-        BufferedImage image = ImageIO.read(inputStream);
-        BufferedImage subImage = image.getSubimage(x, y, width, height);
+        }
+    }
 
+    private class CloseAbleDriver implements AutoCloseable {
+        public final WebDriver driver;
 
-        driver.quit();
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        ImageIO.write(subImage, "png", os);
+        private CloseAbleDriver(int weight, int height) {
+            this.driver = initDriver(weight, height);
+        }
 
-        return Base64.encodeBase64String(os.toByteArray());
+        @Override
+        public void close() {
+            driver.quit();
+
+        }
+
+        private WebDriver initDriver(int weight, int height) {
+            ChromeOptions options = new ChromeOptions();
+            options.addArguments("--headless");
+            options.addArguments("--remote-allow-origins=*");
+            options.addArguments("--disable-gpu");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments(String.format("--window-size=%d,%d", weight, height));
+            options.addArguments("--hide-scrollbars");
+            ChromeDriverService service = new ChromeDriverService.Builder().usingDriverExecutable(new java.io.File(driverPath)).usingAnyFreePort().build();
+            return new ChromeDriver(service, options);
+        }
     }
 }

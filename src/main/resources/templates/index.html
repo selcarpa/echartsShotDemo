@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Document</title>
 </head>
 <body>
-<div id="mainCharts" style="height: 600px; width: 1000px"></div>
+<th:block th:each="option,optionStat:${options}">
+    <div th:id="'charts'+${optionStat.index}" style="height: 600px; width: 1000px"></div>
+</th:block>
+
 </body>
- <script src="/echarts.min.js"></script>
+<script src="/echarts.min.js"></script>
 <script th:inline="javascript">
     window.onload = function () {
-        const mainChart = echarts.init(document.getElementById('mainCharts'))
-        const option=[(${option})]
-        mainChart.setOption(option);
+        const options = [(${options})]
+        for (let i = 0; i < options.length; i++) {
+            let myChart = echarts.init(document.getElementById('charts' + i));
+            myChart.setOption(options[i]);
+        }
     }
 </script>
 </html>
